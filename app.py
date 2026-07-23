@@ -8,7 +8,8 @@ from typing import Dict, List, Tuple
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
-from openai import OpenAI
+"from openai import OpenAI
+from openai import AzureOpenA
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
 from usage_store import write_usage_event, read_usage_events, export_usage_csv
@@ -100,23 +101,29 @@ def user_hash(user_name: str) -> str:
     return hashlib.sha256(f"{salt}:{user_name}".encode("utf-8")).hexdigest()[:16]
 
 
-def build_openai_client() -> OpenAI:
-    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "").rstrip("/") + "/"
-    if not endpoint or endpoint == "/":
+def build_openai_client() -> AzureOpenAI:
+    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "").rstrip("/")
+
+    if not endpoint:
         raise RuntimeError("AZURE_OPENAI_ENDPOINT is not configured.")
 
-    use_mi = os.getenv("USE_MANAGED_IDENTITY", "false").lower() == "true"
-    if use_mi:
-        token_provider = get_bearer_token_provider(
-            DefaultAzureCredential(),
-            "https://cognitiveservices.azure.com/.default",
-        )
-        return OpenAI(base_url=endpoint, api_key=token_provider)
-
     api_key = os.getenv("AZURE_OPENAI_API_KEY")
+
     if not api_key:
-        raise RuntimeError("AZURE_OPENAI_API_KEY is not configured and USE_MANAGED_IDENTITY=false.")
-    return OpenAI(base_url=endpoint, api_key=api_key)
+        raise RuntimeError(
+            "AZURE_OPENAI_API_KEY is not configured."
+        )
+
+    api_version = os.getenv(
+        "AZURE_OPENAI_API_VERSION",
+        "2024-12-01-preview"
+    )
+
+    return AzureOpenAI(
+        azure_endpoint=endpoint,
+        api_key=api_key,
+        api_version=api_version,
+    )
 
 
 def call_llm(messages: List[Dict[str, str]], bu_code: str, hashed_user: str) -> Tuple[str, Dict, int, str]:
@@ -129,6 +136,7 @@ def call_llm(messages: List[Dict[str, str]], bu_code: str, hashed_user: str) -> 
     response = client.chat.completions.create(
         model=deployment,
         messages=messages,
+        max_completion_tokens=int(os.getenv("AZURE_OPENAI_MAX_COMPLETION_TOKENS", "4096")),
         user=f"{bu_code}:{hashed_user}",
     )
     latency_ms = int((time.perf_counter() - started) * 1000)
