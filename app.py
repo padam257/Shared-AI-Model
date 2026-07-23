@@ -8,7 +8,6 @@ from typing import Dict, List, Tuple
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
-"from openai import OpenAI
 from openai import AzureOpenA
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
