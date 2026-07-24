@@ -15,7 +15,7 @@ from usage_store import write_usage_event, read_usage_events, export_usage_csv
 
 load_dotenv()
 
-APP_TITLE = "Shared AI Mode Chargeback PoC"
+APP_TITLE = "Shared AI Model Chargeback PoC"
 SYSTEM_PROMPT = (
     "You are an enterprise assistant. Be concise, safe, and useful. "
     "Do not reveal secrets or internal identifiers."
